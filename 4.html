@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>My first three.js app</title>
+    <style>
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+<script src="three.js/build/three.js"></script>
+<script src="three.js/build/three.min.js"></script>
+<script type="module" src="three.js/examples/jsm/loaders/PLYLoader.js"></script>
+<script src="three.js/examples/js/controls/OrbitControls.js"></script>
+<script type="module">
+    import { PLYLoader } from './three.js/examples/jsm/loaders/PLYLoader.js';
+    //import { OrbitControls } from './three.js/examples/jsm/controls/OrbitControls.js';
+    import {GLTFExporter} from "./three.js/examples/jsm/exporters/GLTFExporter.js";
+
+    // Set up the scene, camera, and renderer as global variables.
+    var scene, camera,camera1, renderer,controls,bufferScene,bufferTexture,group;
+
+    init();
+    animate();
+
+    // Sets up the scene.
+    function init() {
+        // Create the scene and set the scene size.
+        scene = new THREE.Scene();
+        scene.background = null;
+        var WIDTH = window.innerWidth,
+            HEIGHT = window.innerHeight;
+        // Create a renderer and add it to the DOM.
+        renderer = new THREE.WebGLRenderer({antialias:true,alpha: true});
+        // bufferTexture = new THREE.WebGLRenderTarget( 640, 480);
+        // bufferTexture.texture.minFilter=THREE.LinearFilter;
+        // bufferTexture.texture.magFilter=THREE.NearestFilter;
+        // renderer.setRenderTarget(bufferTexture);
+        renderer.setSize(WIDTH, HEIGHT);
+        renderer.setClearColor( 0x000000, 1 );
+        document.body.appendChild(renderer.domElement);
+
+        bufferScene = new THREE.Scene();
+
+        var parameters = {
+            minFilter: THREE.LinearFilter,
+            magFilter: THREE.LinearFilter
+            // format: THREE.RGBFormat,
+            // stencilBuffer: false
+        };
+        bufferTexture = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, parameters);
+        // renderer.setRenderTarget(bufferTexture);
+        // bufferTexture = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, { minFilter: THREE.LinearFilter, magFilter: THREE.NearestFilter});
+
+
+        // Create a camera, zoom it out from the model a bit, and add it to the scene.
+        camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT, 0.1, 2000);
+        camera.position.set(0,0,-1);
+
+        camera.setFocalLength(1);
+
+        camera.lookAt(new THREE.Vector3(0,0,4.336176));
+        camera.up=new THREE.Vector3(0,1,0);
+        camera.right=(new THREE.Vector3(640/480,0,0));
+        camera1 = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 2000 );
+        camera1.position.set(0,0,-1);
+        // bufferScene.add(camera);
+        // scene.add(camera);
+
+        // Create an event listener that resizes the renderer with the browser window.
+        window.addEventListener('resize', function() {
+            var WIDTH = window.innerWidth,
+                HEIGHT = window.innerHeight;
+            renderer.setSize(WIDTH, HEIGHT);
+            camera.aspect = WIDTH / HEIGHT;
+            camera.updateProjectionMatrix();
+        });
+
+        // Set the background color of the scene.
+        // renderer.setClearColor(0xd3d3d3, 0);
+        // renderer.setClearColor(0xffffff, 1);
+
+
+        group = new THREE.Group();
+        for(let i=0;i<=120;i++) {
+            // let lod = new THREE.LOD();
+            var x=Math.floor(i/11);
+            var y=i%11;
+            var sx=(5-x)*11*0.01;
+            var sy=(-5+y)*11*0.01;
+            var m='./mesh/im'+i.toString()+'.ply';
+            var tex;
+            if(i<10){
+                tex='./scene1/scene00'+i.toString()+'.png';
+            }
+            else if(i<100){
+                tex='./scene1/scene0'+i.toString()+'.png';
+            }
+            else {
+                tex='./scene1/scene'+i.toString()+'.png';
+            }
+            render_mesh(m,tex,sx,sy,i);
+
+        }
+        // bufferScene.add(group);
+
+        // var Material = new THREE.MeshBasicMaterial({map:bufferTexture.texture});
+        // // Material.opacity=1;
+        // Material.opacity=1;
+        // Material.needsUpdate=true;
+        // var plane = new THREE.PlaneBufferGeometry( window.innerWidth, window.innerHeight );
+        // var planeObject = new THREE.Mesh(plane,Material);
+        // planeObject.position.z = -300;
+        scene.add(group);
+        // Add OrbitControls so that we can pan around with the mouse.
+        //controls = new OrbitControls(camera, renderer.domElement);
+        //controls.userPanSpeed = 0.05;
+        // controls.userPanSpeed = 100000;
+
+    }
+    function render_mesh(m,tex,sx,sy,i){
+        // let lod = new THREE.LOD();
+        var mesh=new THREE.Mesh();
+        var loader = new PLYLoader();
+        loader.load(m, function (geometry) {
+            var texture = new THREE.TextureLoader().load(tex);
+            texture.premultiplyAlpha=true;
+            texture.flipY = false;
+            var material = new THREE.MeshBasicMaterial({transparent: true,map:texture,depthWrite:false,depthTest:false});
+            material.blending = THREE.CustomBlending;
+            material.blendEquation = THREE.AddEquation; //default
+            material.blendSrc = THREE.SrcAlphaFactor;
+            material.blendDst = THREE.DstAlphaFactor;
+            mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.set(0, 0, 0);
+            // mesh.position.x = sx;
+            // mesh.position.y = sy;
+            // mesh.position.set(sx,sy,0);
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
+            const scale = new THREE.Vector3(11, 11, 1);
+            mesh.scale.multiply(scale);
+            mesh.name=i;
+            // lod.addLevel(mesh,i);
+            // lod.position.set(-sx,-sy,0);
+            group.add(mesh);
+        });
+
+
+    }
+
+    // Renders the scene and updates the render as needed.
+    function animate() {
+        var o=0.0;
+        group.children.forEach(function (child) {
+            // LOD update
+            var i = parseInt(child.name);
+            // console.log(camera.position.x);
+            // opacity
+            var x = Math.floor(i / 11);
+            var y = i % 11;
+            var sx = -(5 - x) * 11 * 0.01;
+            var sy = -(-5 + y) * 11 * 0.01;
+            var x = Math.abs(camera.position.x - sx);
+            var y = Math.abs(camera.position.y - sy);
+            var distance = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
+            console.log("d "+distance);
+            // console.log("child"+child.position.x+"  "+child.position.y+" "+child.position.z);
+            console.log("cam"+camera.position.x+"  "+camera.position.y+" "+camera.position.z);
+            var opacity;
+            if(distance>0.5){
+                opacity=0;
+            }
+            else {
+                opacity=1 /(distance+0.0001);
+                // opacity=1/120;
+            }
+            o+=opacity;
+
+            child.material.opacity = opacity;
+
+        });
+        console.log(o);
+        if(o!=0) {
+            group.children.forEach(function (child) {
+                child.material.opacity = child.material.opacity / o;
+            });
+        }
+
+
+        // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+        requestAnimationFrame(animate);
+        // controls.update();
+
+        // Render the scene.
+
+        // renderer.setRenderTarget(bufferTexture);
+        // renderer.render(bufferScene,camera);
+        //
+        // renderer.setRenderTarget(null);
+        //Finally, draw to the screen
+        renderer.render( scene, camera );
+
+        // renderer.render(scene, camera);
+        // alert(Camx);
+        // var dataURL = renderer.domElement.toDataURL();
+        // window.open(dataURL, "image");
+        //controls.update();
+
+    }
+
+    window.addEventListener('keydown', function(event) {
+        event.preventDefault();
+        var arrow = { left: 37, up: 38, right: 39, down: 40, plus:107,minus:109 };
+        var delta = 0.005;
+        var xAxis = new THREE.Vector3(
+            camera.matrixWorld.elements[0],
+            camera.matrixWorld.elements[1],
+            camera.matrixWorld.elements[2]);
+        var yAxis = new THREE.Vector3(
+            camera.matrixWorld.elements[4],
+            camera.matrixWorld.elements[5],
+            camera.matrixWorld.elements[6]);
+        var zAxis = new THREE.Vector3(
+            camera.matrixWorld.elements[8],
+            camera.matrixWorld.elements[9],
+            camera.matrixWorld.elements[10]);
+        switch (event.keyCode) {
+            case arrow.left:
+                camera.position.addScaledVector(xAxis, -delta);
+                break;
+            case arrow.up:
+                camera.position.addScaledVector(yAxis, delta);
+                break;
+            case arrow.right:
+                camera.position.addScaledVector(xAxis, delta);
+                break;
+            case arrow.down:
+                camera.position.addScaledVector(yAxis, -delta);
+                break;
+            case arrow.minus:
+                camera.position.addScaledVector(zAxis,delta);
+                break;
+            case arrow.plus:
+                camera.position.addScaledVector(zAxis,-delta);
+                break;
+
+        }
+    });
+    // animate();
+    // camera.updateMatrixWorld(); //Update the camera location
+    // var vector = camera.position.clone(); //Get camera position and put into variable
+    // vector.applyMatrix4( camera.matrixWorld );
+    // console.log(camera.position);
+    console.log(renderer.info);
+
+</script>
+</body>
+</html>
